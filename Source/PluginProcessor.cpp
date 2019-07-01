@@ -196,7 +196,7 @@ void DelayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& 
 
 		writeHead++;
 
-		if (writeHead > delayBufferSize)
+		if (writeHead >= delayBufferSize)
 		{
 			writeHead = 0;
 		}
