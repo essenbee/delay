@@ -72,7 +72,7 @@ private:
 	float leftChannelFeedback;
 	float rightChannelFeedback;
 
-	int readHead;
+	float readHead;
 	int writeHead;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DelayAudioProcessor)

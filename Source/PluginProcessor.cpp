@@ -169,17 +169,15 @@ void DelayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-	//delayInSamples = getSampleRate() * *pluginState.getRawParameterValue("delay");
+	delayInSamples = getSampleRate() * *pluginState.getRawParameterValue("delay");
 
     auto* leftChannelData = buffer.getWritePointer (0);
 	auto* rightChannelData = buffer.getWritePointer(1);
 
 	for (int i = 0; i < buffer.getNumSamples(); i++)
 	{
-		DBG(writeHead);
-
-		leftDelayBuffer[writeHead] = leftChannelData[i] * leftChannelFeedback;
-		rightDelayBuffer[writeHead] = rightChannelData[i] * rightChannelFeedback;
+		leftDelayBuffer[writeHead] = leftChannelData[i] + leftChannelFeedback;
+		rightDelayBuffer[writeHead] = rightChannelData[i] + rightChannelFeedback;
 
 		readHead = writeHead - delayInSamples;
 
