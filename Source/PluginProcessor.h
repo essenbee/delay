@@ -65,6 +65,7 @@ private:
     //==============================================================================
 	AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 	float delayInSamples;
+	float smoothedDelay;
 	int delayBufferSize;
 	std::vector<float> leftDelayBuffer;
 	std::vector<float> rightDelayBuffer;

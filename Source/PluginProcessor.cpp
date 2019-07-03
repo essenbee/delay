@@ -28,7 +28,8 @@ DelayAudioProcessor::DelayAudioProcessor()
 					 readHead(0),
 					 writeHead(0),
 					 leftChannelFeedback(0),
-					 rightChannelFeedback(0)
+					 rightChannelFeedback(0),
+					 smoothedDelay(0)
 #endif
 {
 	
@@ -122,6 +123,7 @@ void DelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     // initialisation that you need..
 
 	delayInSamples = sampleRate * *pluginState.getRawParameterValue("delay");
+	smoothedDelay = *pluginState.getRawParameterValue("delay");
 	delayBufferSize = sampleRate * 2; // Max Delay in seconds
 
 	leftDelayBuffer.resize(delayBufferSize);
@@ -169,13 +171,15 @@ void DelayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-	delayInSamples = getSampleRate() * *pluginState.getRawParameterValue("delay");
-
-    auto* leftChannelData = buffer.getWritePointer (0);
+	    auto* leftChannelData = buffer.getWritePointer (0);
 	auto* rightChannelData = buffer.getWritePointer(1);
 
 	for (int i = 0; i < buffer.getNumSamples(); i++)
 	{
+		float delay = *pluginState.getRawParameterValue("delay");
+		smoothedDelay -= 0.0005f * (smoothedDelay - delay);
+		delayInSamples = getSampleRate() * smoothedDelay;
+
 		leftDelayBuffer[writeHead] = leftChannelData[i] + leftChannelFeedback;
 		rightDelayBuffer[writeHead] = rightChannelData[i] + rightChannelFeedback;
 
@@ -186,8 +190,23 @@ void DelayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& 
 			readHead += delayBufferSize;
 		}
 
-		float leftDelayedSample = leftDelayBuffer[static_cast<int>(readHead)];
-		float rightDelayedSample = rightDelayBuffer[static_cast<int>(readHead)];
+		int readHeadInt = static_cast<int>(readHead);
+		float fraction = readHead - readHeadInt;
+
+		int readHeadPlusOne = readHead + 1;
+		if (readHeadPlusOne >= delayBufferSize)
+		{
+			readHeadPlusOne -= delayBufferSize;
+		}
+
+		float leftSample = leftDelayBuffer[readHeadInt];
+		float leftSample1 = leftDelayBuffer[readHeadPlusOne];
+
+		float rightSample = rightDelayBuffer[readHeadInt];
+		float rightSample1 = rightDelayBuffer[readHeadPlusOne];
+
+		float leftDelayedSample = doLinearInterpolation(leftSample, leftSample1, fraction);
+		float rightDelayedSample = doLinearInterpolation(rightSample, rightSample1, fraction);
 
 		leftChannelFeedback = *pluginState.getRawParameterValue("feedback") * leftDelayedSample;
 		rightChannelFeedback = *pluginState.getRawParameterValue("feedback") * rightDelayedSample;
