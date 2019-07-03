@@ -24,12 +24,20 @@ DelayAudioProcessor::DelayAudioProcessor()
                        ),
 					 pluginState(*this, nullptr, "PARAMETERS", createParameterLayout()),
 					 delayInSamples(0),
+					 leftDelayInSamples(0),
+					 rightDelayInSamples(0),
 					 delayBufferSize(0),
 					 readHead(0),
+					 leftReadHead(0),
+					 rightReadHead(0),
 					 writeHead(0),
 					 leftChannelFeedback(0),
 					 rightChannelFeedback(0),
-					 smoothedDelay(0)
+					 smoothedDelay(0),
+					 leftLfo(0),
+					 rightLfo(0),
+					 step(0)
+				
 #endif
 {
 	
@@ -47,9 +55,17 @@ AudioProcessorValueTreeState::ParameterLayout DelayAudioProcessor::createParamet
 	auto feedbackParam = std::make_unique<AudioParameterFloat>("feedback", "Feedback", 0.0f, 0.98f, 0.0f);
 	auto delayParam = std::make_unique<AudioParameterFloat>("delay", "Delay", 0.0f, 2.0f, 0.5f);
 
+	auto rateParam = std::make_unique<AudioParameterFloat>("rate", "Rate", 0.1f, 20.0f, 10.0f);
+	auto depthParam = std::make_unique<AudioParameterFloat>("depth", "Depth", 0.0f, 1.0f, 0.5f);
+	auto phaseOffsetParam = std::make_unique<AudioParameterFloat>("phaseOffset", "Phase Offset", 0.0f, 1.0f, 0.0f);
+
 	audioParams.push_back(std::move(wetDryMixParam));
 	audioParams.push_back(std::move(feedbackParam));
 	audioParams.push_back(std::move(delayParam));
+
+	audioParams.push_back(std::move(rateParam));
+	audioParams.push_back(std::move(depthParam));
+	audioParams.push_back(std::move(phaseOffsetParam));
 
 	return { audioParams.begin(), audioParams.end() };
 }
@@ -129,6 +145,10 @@ void DelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 	leftDelayBuffer.resize(delayBufferSize);
 	rightDelayBuffer.resize(delayBufferSize);
 
+	leftLfo = 0;
+	rightLfo = 0;
+	step = 0;
+
 	writeHead = 0;
 }
 
@@ -171,45 +191,85 @@ void DelayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-	    auto* leftChannelData = buffer.getWritePointer (0);
+	auto* leftChannelData = buffer.getWritePointer (0);
 	auto* rightChannelData = buffer.getWritePointer(1);
 
 	for (int i = 0; i < buffer.getNumSamples(); i++)
 	{
-		float delay = *pluginState.getRawParameterValue("delay");
-		smoothedDelay -= 0.0005f * (smoothedDelay - delay);
-		delayInSamples = getSampleRate() * smoothedDelay;
+		leftLfo = sin(2 * 3.14159 * step);
+		rightLfo = sin(2 * 3.14159 * step);
 
+		step += *pluginState.getRawParameterValue("rate") / getSampleRate();
+
+		float depth = *pluginState.getRawParameterValue("depth");
+
+		leftLfo *= depth;
+		rightLfo *= depth;
+
+		// Chorus Effect
+		float leftLfoMapped = jmap(leftLfo, -1.0f, 1.0f, 0.005f, 0.030f);
+		float rightLfoMapped = jmap(rightLfo, -1.0f, 1.0f, 0.005f, 0.030f);
+
+		leftDelayInSamples = getSampleRate() * leftLfoMapped;
+		rightDelayInSamples = getSampleRate() * rightLfoMapped;
+
+		// Calculate read heads for left and right channels
+		leftReadHead = writeHead - leftDelayInSamples;
+		if (leftReadHead < 0)
+		{
+			leftReadHead += delayBufferSize;
+		}
+		
+		rightReadHead = writeHead - rightDelayInSamples;
+		if (rightReadHead < 0)
+		{
+			rightReadHead += delayBufferSize;
+		}
+
+		// Write sample to delay buffers
 		leftDelayBuffer[writeHead] = leftChannelData[i] + leftChannelFeedback;
 		rightDelayBuffer[writeHead] = rightChannelData[i] + rightChannelFeedback;
 
-		readHead = writeHead - delayInSamples;
-
-		if (readHead < 0)
-		{
-			readHead += delayBufferSize;
-		}
-
-		int readHeadInt = static_cast<int>(readHead);
-		float fraction = readHead - readHeadInt;
-
-		int readHeadPlusOne = readHead + 1;
-		if (readHeadPlusOne >= delayBufferSize)
-		{
-			readHeadPlusOne -= delayBufferSize;
-		}
-
-		float leftSample = leftDelayBuffer[readHeadInt];
-		float leftSample1 = leftDelayBuffer[readHeadPlusOne];
-
-		float rightSample = rightDelayBuffer[readHeadInt];
-		float rightSample1 = rightDelayBuffer[readHeadPlusOne];
-
-		float leftDelayedSample = doLinearInterpolation(leftSample, leftSample1, fraction);
-		float rightDelayedSample = doLinearInterpolation(rightSample, rightSample1, fraction);
+		float leftDelayedSample = leftDelayBuffer[leftReadHead];
+		float rightDelayedSample = rightDelayBuffer[rightReadHead];
 
 		leftChannelFeedback = *pluginState.getRawParameterValue("feedback") * leftDelayedSample;
 		rightChannelFeedback = *pluginState.getRawParameterValue("feedback") * rightDelayedSample;
+
+		//float delay = *pluginState.getRawParameterValue("delay");
+		//smoothedDelay -= 0.0005f * (smoothedDelay - delay);
+		//delayInSamples = getSampleRate() * smoothedDelay;
+
+		//leftDelayBuffer[writeHead] = leftChannelData[i] + leftChannelFeedback;
+		//rightDelayBuffer[writeHead] = rightChannelData[i] + rightChannelFeedback;
+
+		//readHead = writeHead - delayInSamples;
+
+		//if (readHead < 0)
+		//{
+		//	readHead += delayBufferSize;
+		//}
+
+		//int readHeadInt = static_cast<int>(readHead);
+		//float fraction = readHead - readHeadInt;
+
+		//int readHeadPlusOne = readHead + 1;
+		//if (readHeadPlusOne >= delayBufferSize)
+		//{
+		//	readHeadPlusOne -= delayBufferSize;
+		//}
+
+		//float leftSample = leftDelayBuffer[readHeadInt];
+		//float leftSample1 = leftDelayBuffer[readHeadPlusOne];
+
+		//float rightSample = rightDelayBuffer[readHeadInt];
+		//float rightSample1 = rightDelayBuffer[readHeadPlusOne];
+
+		//float leftDelayedSample = doLinearInterpolation(leftSample, leftSample1, fraction);
+		//float rightDelayedSample = doLinearInterpolation(rightSample, rightSample1, fraction);
+
+		//leftChannelFeedback = *pluginState.getRawParameterValue("feedback") * leftDelayedSample;
+		//rightChannelFeedback = *pluginState.getRawParameterValue("feedback") * rightDelayedSample;
 
 		writeHead++;
 
