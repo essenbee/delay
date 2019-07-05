@@ -65,9 +65,6 @@ private:
     //==============================================================================
 	AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 	float delayInSamples;
-	float leftDelayInSamples;
-	float rightDelayInSamples;
-
 	float smoothedDelay;
 	int delayBufferSize;
 	std::vector<float> leftDelayBuffer;
@@ -76,13 +73,7 @@ private:
 	float leftChannelFeedback;
 	float rightChannelFeedback;
 
-	float leftLfo;
-	float rightLfo;
-	float step;
-
 	float readHead;
-	float leftReadHead;
-	float rightReadHead;
 	int writeHead;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DelayAudioProcessor)
