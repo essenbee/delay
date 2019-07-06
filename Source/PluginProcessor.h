@@ -11,6 +11,7 @@
 #pragma once
 
 #include "../JuceLibraryCode/JuceHeader.h"
+#include "CodebaseAlphaFx.h"
 
 #define WETDRYMIX = "wetdrymix";
 #define FEEDBACK = "feedback";
@@ -64,26 +65,12 @@ public:
 private:
     //==============================================================================
 	AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
-	float delayInSamples;
-	float leftDelayInSamples;
-	float rightDelayInSamples;
+	void updateParameters();
 
-	float smoothedDelay;
-	int delayBufferSize;
-	std::vector<float> leftDelayBuffer;
-	std::vector<float> rightDelayBuffer;
+	// Using Codebase Alpha Effect classes
+	AlphaSimpleDelay delay;
+	AlphaChorus chorus;
 
-	float leftChannelFeedback;
-	float rightChannelFeedback;
-
-	float leftLfo;
-	float rightLfo;
-	float step;
-
-	float readHead;
-	float leftReadHead;
-	float rightReadHead;
-	int writeHead;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DelayAudioProcessor)
 };

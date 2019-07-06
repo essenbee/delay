@@ -10,6 +10,7 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "CodebaseAlphaFx.h"
 
 //==============================================================================
 DelayAudioProcessor::DelayAudioProcessor()
@@ -22,21 +23,7 @@ DelayAudioProcessor::DelayAudioProcessor()
                        .withOutput ("Output", AudioChannelSet::stereo(), true)
                      #endif
                        ),
-					 pluginState(*this, nullptr, "PARAMETERS", createParameterLayout()),
-					 delayInSamples(0),
-					 leftDelayInSamples(0),
-					 rightDelayInSamples(0),
-					 delayBufferSize(0),
-					 readHead(0),
-					 leftReadHead(0),
-					 rightReadHead(0),
-					 writeHead(0),
-					 leftChannelFeedback(0),
-					 rightChannelFeedback(0),
-					 smoothedDelay(0),
-					 leftLfo(0),
-					 rightLfo(0),
-					 step(0)
+					 pluginState(*this, nullptr, "PARAMETERS", createParameterLayout())
 				
 #endif
 {
@@ -138,18 +125,25 @@ void DelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
 
-	delayInSamples = sampleRate * *pluginState.getRawParameterValue("delay");
-	smoothedDelay = *pluginState.getRawParameterValue("delay");
-	delayBufferSize = sampleRate * 2; // Max Delay in seconds
+	delay.reset(sampleRate);
+	chorus.reset(sampleRate);
+	updateParameters();
+}
 
-	leftDelayBuffer.resize(delayBufferSize);
-	rightDelayBuffer.resize(delayBufferSize);
+void DelayAudioProcessor::updateParameters()
+{
+	auto params = delay.getParameters();
+	params.delay = *pluginState.getRawParameterValue("delay");
+	params.feedback = *pluginState.getRawParameterValue("feedback");
+	params.wetDryMix = *pluginState.getRawParameterValue("wetdrymix");
+	delay.setParameters(params);
 
-	leftLfo = 0;
-	rightLfo = 0;
-	step = 0;
-
-	writeHead = 0;
+	auto chorusParams = chorus.getParameters();
+	chorusParams.wetDryMix = *pluginState.getRawParameterValue("wetdrymix");
+	chorusParams.feedback = *pluginState.getRawParameterValue("feedback");
+	chorusParams.rate = *pluginState.getRawParameterValue("rate");
+	chorusParams.depth = *pluginState.getRawParameterValue("depth");
+	chorus.setParameters(chorusParams);
 }
 
 void DelayAudioProcessor::releaseResources()
@@ -196,92 +190,16 @@ void DelayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& 
 
 	for (int i = 0; i < buffer.getNumSamples(); i++)
 	{
-		leftLfo = sin(2 * 3.14159 * step);
-		rightLfo = sin(2 * 3.14159 * step);
+		updateParameters();
 
-		step += *pluginState.getRawParameterValue("rate") / getSampleRate();
+		float inputFrame[2]{ leftChannelData[i], rightChannelData[i] };
+		float outputFrame[2];
 
-		float depth = *pluginState.getRawParameterValue("depth");
+		// delay.processAudioFrame(inputFrame, outputFrame, totalNumInputChannels, totalNumOutputChannels)
+		chorus.processAudioFrame(inputFrame, outputFrame, totalNumInputChannels, totalNumOutputChannels);
 
-		leftLfo *= depth;
-		rightLfo *= depth;
-
-		// Chorus Effect
-		float leftLfoMapped = jmap(leftLfo, -1.0f, 1.0f, 0.005f, 0.030f);
-		float rightLfoMapped = jmap(rightLfo, -1.0f, 1.0f, 0.005f, 0.030f);
-
-		leftDelayInSamples = getSampleRate() * leftLfoMapped;
-		rightDelayInSamples = getSampleRate() * rightLfoMapped;
-
-		// Calculate read heads for left and right channels
-		leftReadHead = writeHead - leftDelayInSamples;
-		if (leftReadHead < 0)
-		{
-			leftReadHead += delayBufferSize;
-		}
-		
-		rightReadHead = writeHead - rightDelayInSamples;
-		if (rightReadHead < 0)
-		{
-			rightReadHead += delayBufferSize;
-		}
-
-		// Write sample to delay buffers
-		leftDelayBuffer[writeHead] = leftChannelData[i] + leftChannelFeedback;
-		rightDelayBuffer[writeHead] = rightChannelData[i] + rightChannelFeedback;
-
-		float leftDelayedSample = leftDelayBuffer[leftReadHead];
-		float rightDelayedSample = rightDelayBuffer[rightReadHead];
-
-		leftChannelFeedback = *pluginState.getRawParameterValue("feedback") * leftDelayedSample;
-		rightChannelFeedback = *pluginState.getRawParameterValue("feedback") * rightDelayedSample;
-
-		//float delay = *pluginState.getRawParameterValue("delay");
-		//smoothedDelay -= 0.0005f * (smoothedDelay - delay);
-		//delayInSamples = getSampleRate() * smoothedDelay;
-
-		//leftDelayBuffer[writeHead] = leftChannelData[i] + leftChannelFeedback;
-		//rightDelayBuffer[writeHead] = rightChannelData[i] + rightChannelFeedback;
-
-		//readHead = writeHead - delayInSamples;
-
-		//if (readHead < 0)
-		//{
-		//	readHead += delayBufferSize;
-		//}
-
-		//int readHeadInt = static_cast<int>(readHead);
-		//float fraction = readHead - readHeadInt;
-
-		//int readHeadPlusOne = readHead + 1;
-		//if (readHeadPlusOne >= delayBufferSize)
-		//{
-		//	readHeadPlusOne -= delayBufferSize;
-		//}
-
-		//float leftSample = leftDelayBuffer[readHeadInt];
-		//float leftSample1 = leftDelayBuffer[readHeadPlusOne];
-
-		//float rightSample = rightDelayBuffer[readHeadInt];
-		//float rightSample1 = rightDelayBuffer[readHeadPlusOne];
-
-		//float leftDelayedSample = doLinearInterpolation(leftSample, leftSample1, fraction);
-		//float rightDelayedSample = doLinearInterpolation(rightSample, rightSample1, fraction);
-
-		//leftChannelFeedback = *pluginState.getRawParameterValue("feedback") * leftDelayedSample;
-		//rightChannelFeedback = *pluginState.getRawParameterValue("feedback") * rightDelayedSample;
-
-		writeHead++;
-
-		if (writeHead >= delayBufferSize)
-		{
-			writeHead = 0;
-		}
-
-		auto wetDryRatio = *pluginState.getRawParameterValue("wetdrymix");
-
-		buffer.setSample(0, i, buffer.getSample(0, i) * (1 - wetDryRatio) + (leftDelayedSample * wetDryRatio));
-		buffer.setSample(1, i, buffer.getSample(1, i) * (1 - wetDryRatio) + (rightDelayedSample * wetDryRatio));
+		buffer.setSample(0, i, outputFrame[0]);
+		buffer.setSample(1, i, outputFrame[1]);
 	}
 }
 
@@ -297,17 +215,29 @@ AudioProcessorEditor* DelayAudioProcessor::createEditor()
 }
 
 //==============================================================================
-void DelayAudioProcessor::getStateInformation (MemoryBlock& destData)
+void DelayAudioProcessor::getStateInformation(MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
+	// You should use this method to store your parameters in the memory block.
+	// You could do that either as raw data, or use the XML or ValueTree classes
+	// as intermediaries to make it easy to save and load complex data.
+
+	auto state = pluginState.copyState();
+	std::unique_ptr<XmlElement> xml(state.createXml());
+	copyXmlToBinary(*xml, destData);
 }
 
 void DelayAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+	std::unique_ptr<XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
+	if (xmlState.get() != nullptr)
+	{
+		if (xmlState->hasTagName(pluginState.state.getType()))
+		{
+			pluginState.replaceState(ValueTree::fromXml(*xmlState));
+		}
+	}
 }
 
 //==============================================================================
