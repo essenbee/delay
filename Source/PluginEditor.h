@@ -35,6 +35,11 @@ private:
 	Slider feedbackSlider;
 	Slider delaySlider;
 
+	// Chorus Effect
+	Slider chorusRateSlider;
+	Slider chorusDepthSlider;
+	Slider phaseOffsetSlider;
+
 	void makeRotorySlider(Slider* slider, String suffix, Component* parent);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DelayAudioProcessorEditor)
@@ -43,4 +48,8 @@ public:
 	std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> wetDryMixValue;
 	std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> feedbackValue;
 	std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> delayValue;
+
+	std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> chorusRateValue;
+	std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> chorusDepthValue;
+	std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> phaseOffsetValue;
 };

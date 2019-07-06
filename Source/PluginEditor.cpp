@@ -23,13 +23,25 @@ DelayAudioProcessorEditor::DelayAudioProcessorEditor (DelayAudioProcessor& p)
 	wetDryMixValue = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(processor.pluginState, "wetdrymix", wetDryMixSlider);
 	addAndMakeVisible(&wetDryMixSlider);
 
-	makeRotorySlider(&feedbackSlider, " Feedback dB", this);
+	makeRotorySlider(&feedbackSlider, " Feedback", this);
 	feedbackValue = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(processor.pluginState, "feedback", feedbackSlider);
 	addAndMakeVisible(&feedbackSlider);
 
 	makeRotorySlider(&delaySlider, " Delay s", this);
 	delayValue = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(processor.pluginState, "delay", delaySlider);
 	addAndMakeVisible(&delaySlider);
+
+	makeRotorySlider(&chorusRateSlider, " Rate (Hz)", this);
+	chorusRateValue = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(processor.pluginState, "rate", chorusRateSlider);
+	addAndMakeVisible(&chorusRateSlider);
+
+	makeRotorySlider(&chorusDepthSlider, " Depth", this);
+	chorusDepthValue = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(processor.pluginState, "depth", chorusDepthSlider);
+	addAndMakeVisible(&chorusDepthSlider);
+
+	makeRotorySlider(&phaseOffsetSlider, " Phase Offset", this);
+	phaseOffsetValue = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(processor.pluginState, "phaseOffset", phaseOffsetSlider);
+	addAndMakeVisible(&phaseOffsetSlider);
 }
 
 DelayAudioProcessorEditor::~DelayAudioProcessorEditor()
@@ -49,13 +61,16 @@ void DelayAudioProcessorEditor::resized()
     // subcomponents in your editor..
 	Grid grid;
 
-	grid.templateRows = { Grid::TrackInfo(1_fr) };
-	grid.templateColumns = { Grid::TrackInfo(1_fr), Grid::TrackInfo(1_fr), Grid::TrackInfo(1_fr), Grid::TrackInfo(2_fr) };
+	grid.templateRows = { Grid::TrackInfo(1_fr), Grid::TrackInfo(1_fr) };
+	grid.templateColumns = { Grid::TrackInfo(1_fr), Grid::TrackInfo(1_fr), Grid::TrackInfo(1_fr) };
 
 	grid.items = {
 		GridItem(wetDryMixSlider),
 		GridItem(feedbackSlider),
 		GridItem(delaySlider),
+		GridItem(chorusRateSlider),
+		GridItem(chorusDepthSlider),
+		GridItem(phaseOffsetSlider)
 	 };
 
 	grid.performLayout(getLocalBounds());
