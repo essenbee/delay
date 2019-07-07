@@ -1,2 +1,2 @@
 # delay
-A VST Plugin implementing a Delay Effect
+A VST Plugin implementing a Delay/Chrous/Flanger Effect
