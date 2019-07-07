@@ -59,13 +59,12 @@ public:
 		smoothedDelay -= 0.0005f * (smoothedDelay - parameters.delay);
         delayInSamples = sampleRate * smoothedDelay;
 
-		leftDelayBuffer.writeBuffer(xn + leftChannelFeedback);
-
 		double yn = leftDelayBuffer.readBuffer(delayInSamples);
 
 		leftChannelFeedback = parameters.feedback * yn;
-
 		yn = xn * (1 - parameters.wetDryMix) + (yn * parameters.wetDryMix);
+
+		leftDelayBuffer.writeBuffer(xn + leftChannelFeedback);
 
 		return yn;
 	}
@@ -91,17 +90,19 @@ public:
 		smoothedDelay -= 0.0005f * (smoothedDelay - parameters.delay);
 		delayInSamples = sampleRate * smoothedDelay;
 
-		leftDelayBuffer.writeBuffer(inputFrame[0] + leftChannelFeedback);
-		rightDelayBuffer.writeBuffer(inputFrame[1] + rightChannelFeedback);
-
 		double leftDelayedSample = leftDelayBuffer.readBuffer(delayInSamples);
 		double rightDelayedSample = rightDelayBuffer.readBuffer(delayInSamples);
 
 		leftChannelFeedback = parameters.feedback * leftDelayedSample;
 		rightChannelFeedback = parameters.feedback * rightDelayedSample;
 
+		leftDelayBuffer.writeBuffer(inputFrame[0] + leftChannelFeedback);
+		rightDelayBuffer.writeBuffer(inputFrame[1] + rightChannelFeedback);
+
 		outputFrame[0] = inputFrame[0] * (1 - parameters.wetDryMix) + (leftDelayedSample * parameters.wetDryMix);
 		outputFrame[1] = inputFrame[1] * (1 - parameters.wetDryMix) + (rightDelayedSample * parameters.wetDryMix);
+
+		return true;
 	}
 
 	AlphaSimpleDelayParameters getParameters()
@@ -146,9 +147,9 @@ struct AlphaChorusParameters
 		return *this;
 	}
 
-	double wetDryMix = 0.5;
+	double wetDryMix = 0.25;
 	double feedback = 0.0;
-	double rate = 10.0; // Freq. of LFOs in Hz
+	double rate = 1.0; // Freq. of LFOs in Hz
 	double depth = 0.5;
 };
 
@@ -168,14 +169,7 @@ public:
 
 		leftLFO.reset(sampleRate);
 		rightLFO.reset(sampleRate);
-
-		auto leftLfoParams = leftLFO.getParameters();
-		auto rightLfoParams = rightLFO.getParameters();
-		leftLfoParams.waveform = generatorWaveform::kSin;
-		rightLfoParams.waveform = generatorWaveform::kSin;
-
-		leftLFO.setParameters(leftLfoParams);
-		rightLFO.setParameters(rightLfoParams);
+		updateLfoParameters();
 
 		return true;
 	}
@@ -187,26 +181,18 @@ public:
 
 	virtual double processAudioSample(double xn) override
 	{
-		auto leftLfoParams = leftLFO.getParameters();
-		leftLfoParams.frequency_Hz = parameters.rate;
-		leftLfoParams.waveform = generatorWaveform::kSin;
-		leftLFO.setParameters(leftLfoParams);
+		updateLfoParameters();
 
 		auto leftLfoOutput = leftLFO.renderAudioOutput();
 		auto leftLfoValue = static_cast<float>(leftLfoOutput.normalOutput * parameters.depth);
 
-		// Chorus Effect delay values
-		float leftLfoMapped = jmap(leftLfoValue, -1.0f, 1.0f, 0.005f, 0.030f);
-		leftDelayInSamples = sampleRate * leftLfoMapped;
-
-		leftReadHead = writeHead - leftDelayInSamples;
-
-		leftDelayBuffer.writeBuffer(xn + leftChannelFeedback);
-
+		leftDelayInSamples = getDelayInSamples(leftLfoValue);
 		float leftDelayedSample = leftDelayBuffer.readBuffer(leftDelayInSamples);
-		leftChannelFeedback = parameters.feedback * leftDelayedSample;
 
 		float yn = xn * (1 - parameters.wetDryMix) + (leftDelayedSample * parameters.wetDryMix);
+		leftDelayBuffer.writeBuffer(xn + leftChannelFeedback);
+
+		leftChannelFeedback = parameters.feedback * leftDelayedSample;
 
 		return yn;
 	}
@@ -229,15 +215,7 @@ public:
 		}
 
 		// Stereo processing
-		auto leftLfoParams = leftLFO.getParameters();
-		leftLfoParams.frequency_Hz = parameters.rate;
-		leftLfoParams.waveform = generatorWaveform::kTriangle;
-		leftLFO.setParameters(leftLfoParams);
-
-		auto rightLfoParams = rightLFO.getParameters();
-		rightLfoParams.frequency_Hz = parameters.rate;
-		rightLfoParams.waveform = generatorWaveform::kTriangle;
-		rightLFO.setParameters(rightLfoParams);
+		updateLfoParameters();
 
 		auto leftLfoOutput = leftLFO.renderAudioOutput();
 		auto leftLfoValue = static_cast<float>(leftLfoOutput.normalOutput * parameters.depth);
@@ -245,25 +223,22 @@ public:
 		auto rightLfoOutput = rightLFO.renderAudioOutput();
 		auto rightLfoValue = static_cast<float>(rightLfoOutput.normalOutput * parameters.depth);
 
-		// Chorus Effect delay values
-		float leftLfoMapped = jmap(leftLfoValue, -1.0f, 1.0f, 0.005f, 0.030f);
-		leftDelayInSamples = sampleRate * leftLfoMapped;
-		float rightLfoMapped = jmap(rightLfoValue, -1.0f, 1.0f, 0.005f, 0.030f);
-		rightDelayInSamples = sampleRate * rightLfoMapped;
+		leftDelayInSamples = getDelayInSamples(leftLfoValue);
+		rightDelayInSamples = getDelayInSamples(rightLfoValue);
 
-		leftReadHead = writeHead - leftDelayInSamples;
-		rightReadHead = writeHead - rightDelayInSamples;
+		float leftDelayedSample = leftDelayBuffer.readBuffer(leftDelayInSamples);
+		float rightDelayedSample = rightDelayBuffer.readBuffer(rightDelayInSamples);
 
 		leftDelayBuffer.writeBuffer(inputFrame[0] + leftChannelFeedback);
 		rightDelayBuffer.writeBuffer(inputFrame[1] + rightChannelFeedback);
 
-		float leftDelayedSample = leftDelayBuffer.readBuffer(leftDelayInSamples);
 		leftChannelFeedback = parameters.feedback * leftDelayedSample;
-		float rightDelayedSample = rightDelayBuffer.readBuffer(rightDelayInSamples);
 		rightChannelFeedback = parameters.feedback * rightDelayedSample;
 
 		outputFrame[0] = inputFrame[0] * (1 - parameters.wetDryMix) + (leftDelayedSample * parameters.wetDryMix);
 		outputFrame[1] = inputFrame[1] * (1 - parameters.wetDryMix) + (rightDelayedSample * parameters.wetDryMix);
+
+		return true;
 	}
 
 	AlphaChorusParameters getParameters()
@@ -282,9 +257,6 @@ private:
 	double leftDelayInSamples = 0;
 	double rightDelayInSamples = 0;
 	int delayBufferSize = 0;
-	float leftReadHead = 0;
-	float rightReadHead = 0;
-	int writeHead = 0;
 
 	float leftChannelFeedback = 0.0;
 	float rightChannelFeedback = 0.0;
@@ -294,4 +266,24 @@ private:
 
 	LFO leftLFO;
 	LFO rightLFO;
+
+	void updateLfoParameters()
+	{
+		auto leftLfoParams = leftLFO.getParameters();
+		leftLfoParams.frequency_Hz = parameters.rate;
+		leftLfoParams.waveform = generatorWaveform::kTriangle;
+		leftLFO.setParameters(leftLfoParams);
+
+		auto rightLfoParams = rightLFO.getParameters();
+		rightLfoParams.frequency_Hz = parameters.rate;
+		rightLfoParams.waveform = generatorWaveform::kTriangle;
+		rightLFO.setParameters(rightLfoParams);
+	}
+
+	double getDelayInSamples(float lfoValue)
+	{
+		// Chorus Effect delay values
+		float lfoMapped = jmap(lfoValue, -1.0f, 1.0f, 0.005f, 0.030f);
+		return sampleRate * lfoMapped;
+	}
 };

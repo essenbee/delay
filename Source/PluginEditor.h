@@ -40,6 +40,14 @@ private:
 	Slider chorusDepthSlider;
 	Slider phaseOffsetSlider;
 
+	Label pluginName;
+	Label wetDryMixLabel;
+	Label feedbackLabel;
+	Label delayLabel;
+	Label rateLabel;
+	Label depthLabel;
+	Label phaseOffsetLabel;
+
 	void makeRotorySlider(Slider* slider, String suffix, Component* parent);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DelayAudioProcessorEditor)

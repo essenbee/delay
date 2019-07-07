@@ -24,10 +24,8 @@ DelayAudioProcessor::DelayAudioProcessor()
                      #endif
                        ),
 					 pluginState(*this, nullptr, "PARAMETERS", createParameterLayout())
-				
 #endif
 {
-	
 }
 
 DelayAudioProcessor::~DelayAudioProcessor()
@@ -42,8 +40,8 @@ AudioProcessorValueTreeState::ParameterLayout DelayAudioProcessor::createParamet
 	auto feedbackParam = std::make_unique<AudioParameterFloat>("feedback", "Feedback", 0.0f, 0.98f, 0.0f);
 	auto delayParam = std::make_unique<AudioParameterFloat>("delay", "Delay", 0.0f, 2.0f, 0.5f);
 
-	auto rateParam = std::make_unique<AudioParameterFloat>("rate", "Rate", 0.1f, 20.0f, 10.0f);
-	auto depthParam = std::make_unique<AudioParameterFloat>("depth", "Depth", 0.0f, 1.0f, 0.5f);
+	auto rateParam = std::make_unique<AudioParameterFloat>("rate", "Rate", 0.1f, 20.0f, 1.0f);
+	auto depthParam = std::make_unique<AudioParameterFloat>("depth", "Depth", 0.0f, 1.0f, 0.25f);
 	auto phaseOffsetParam = std::make_unique<AudioParameterFloat>("phaseOffset", "Phase Offset", 0.0f, 1.0f, 0.0f);
 
 	audioParams.push_back(std::move(wetDryMixParam));
@@ -182,8 +180,10 @@ void DelayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& 
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
+	for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
+	{
+		buffer.clear(i, 0, buffer.getNumSamples());
+	}
 
 	auto* leftChannelData = buffer.getWritePointer (0);
 	auto* rightChannelData = buffer.getWritePointer(1);
