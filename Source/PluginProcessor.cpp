@@ -42,6 +42,12 @@ AudioProcessorValueTreeState::ParameterLayout DelayAudioProcessor::createParamet
 
 	auto rateParam = std::make_unique<AudioParameterFloat>("rate", "Rate", 0.1f, 20.0f, 1.0f);
 	auto depthParam = std::make_unique<AudioParameterFloat>("depth", "Depth", 0.0f, 1.0f, 0.25f);
+
+	// Dimensions Chorus
+	auto wetDryMixLeftParam = std::make_unique<AudioParameterFloat>("wetdrymixleft", "Left Wet/Dry Mix", 0.0f, 1.0f, 0.25f);
+	auto wetDryMixRightParam = std::make_unique<AudioParameterFloat>("wetdrymixright", "Right Wet/Dry Mix", 0.0f, 1.0f, 0.25f);
+	auto cutoffFreqParam = std::make_unique<AudioParameterFloat>("cutoff", "Cutoff Freq.", 20.0f, 22000.0f, 1000.0f);
+	
 	auto phaseOffsetParam = std::make_unique<AudioParameterFloat>("phaseOffset", "Phase Offset", 0.0f, 1.0f, 0.0f);
 
 	audioParams.push_back(std::move(wetDryMixParam));
@@ -50,6 +56,11 @@ AudioProcessorValueTreeState::ParameterLayout DelayAudioProcessor::createParamet
 
 	audioParams.push_back(std::move(rateParam));
 	audioParams.push_back(std::move(depthParam));
+
+	audioParams.push_back(std::move(wetDryMixLeftParam));
+	audioParams.push_back(std::move(wetDryMixRightParam));
+	audioParams.push_back(std::move(cutoffFreqParam));
+
 	audioParams.push_back(std::move(phaseOffsetParam));
 
 	return { audioParams.begin(), audioParams.end() };
@@ -125,6 +136,7 @@ void DelayAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 
 	delay.reset(sampleRate);
 	chorus.reset(sampleRate);
+	dimensionsChorus.reset(sampleRate);
 	updateParameters();
 }
 
@@ -141,7 +153,16 @@ void DelayAudioProcessor::updateParameters()
 	chorusParams.feedback = *pluginState.getRawParameterValue("feedback");
 	chorusParams.rate = *pluginState.getRawParameterValue("rate");
 	chorusParams.depth = *pluginState.getRawParameterValue("depth");
+	chorusParams.pluginType = chorusType::kFlanger;
 	chorus.setParameters(chorusParams);
+
+	auto dimensionsParams = dimensionsChorus.getParameters();
+	dimensionsParams.cutoffFrequency = *pluginState.getRawParameterValue("cutoff");
+	dimensionsParams.depth = *pluginState.getRawParameterValue("depth");
+	dimensionsParams.rate = *pluginState.getRawParameterValue("rate");
+	dimensionsParams.wetDryMixLeft = *pluginState.getRawParameterValue("wetdrymixleft");
+	dimensionsParams.wetDryMixRight = *pluginState.getRawParameterValue("wetdrymixright");
+	dimensionsChorus.setParameters(dimensionsParams);
 }
 
 void DelayAudioProcessor::releaseResources()
@@ -196,7 +217,8 @@ void DelayAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& 
 		float outputFrame[2];
 
 		// delay.processAudioFrame(inputFrame, outputFrame, totalNumInputChannels, totalNumOutputChannels)
-		chorus.processAudioFrame(inputFrame, outputFrame, totalNumInputChannels, totalNumOutputChannels);
+		// chorus.processAudioFrame(inputFrame, outputFrame, totalNumInputChannels, totalNumOutputChannels);
+		dimensionsChorus.processAudioFrame(inputFrame, outputFrame, totalNumInputChannels, totalNumOutputChannels);
 
 		buffer.setSample(0, i, outputFrame[0]);
 		buffer.setSample(1, i, outputFrame[1]);

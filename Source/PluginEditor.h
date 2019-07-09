@@ -38,14 +38,24 @@ private:
 	// Chorus Effect
 	Slider chorusRateSlider;
 	Slider chorusDepthSlider;
+
+	Slider wetDryMixLeftSlider;
+	Slider wetDryMixRightSlider;
+	Slider cutoffFreqSlider;
+
 	Slider phaseOffsetSlider;
 
 	Label pluginName;
 	Label wetDryMixLabel;
 	Label feedbackLabel;
 	Label delayLabel;
+
+	Label wetDryMixLeftLabel;
+	Label wetDryMixRightLabel;
+	Label cutoffFreqLabel;
 	Label rateLabel;
 	Label depthLabel;
+	
 	Label phaseOffsetLabel;
 
 	void makeRotorySlider(Slider* slider, String suffix, Component* parent);
@@ -59,5 +69,10 @@ public:
 
 	std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> chorusRateValue;
 	std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> chorusDepthValue;
+
+	std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> wetDryMixLeftValue;
+	std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> wetDryMixRightValue;
+	std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> cutoffFreqValue;
+
 	std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> phaseOffsetValue;
 };

@@ -70,6 +70,7 @@ private:
 	// Using Codebase Alpha Effect classes
 	AlphaSimpleDelay delay;
 	AlphaChorus chorus;
+	AlphaDiminesionsChorus dimensionsChorus;
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DelayAudioProcessor)

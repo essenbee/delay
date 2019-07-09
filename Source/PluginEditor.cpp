@@ -29,29 +29,53 @@ DelayAudioProcessorEditor::DelayAudioProcessorEditor (DelayAudioProcessor& p)
 	pluginName.setJustificationType(Justification::centredTop);
 	addAndMakeVisible(&pluginName);
 
-	makeRotorySlider(&wetDryMixSlider, "Wet/Dry Ratio", this);
-	wetDryMixValue = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(processor.pluginState, "wetdrymix", wetDryMixSlider);
-	addAndMakeVisible(&wetDryMixSlider);
+	//makeRotorySlider(&wetDryMixSlider, "Wet/Dry Ratio", this);
+	//wetDryMixValue = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(processor.pluginState, "wetdrymix", wetDryMixSlider);
+	//addAndMakeVisible(&wetDryMixSlider);
 
-	wetDryMixLabel.setText("Wet/Dry Mix", dontSendNotification);
-	wetDryMixLabel.setJustificationType(Justification::centredTop);
-	addAndMakeVisible(&wetDryMixLabel);
+	//wetDryMixLabel.setText("Wet/Dry Mix", dontSendNotification);
+	//wetDryMixLabel.setJustificationType(Justification::centredTop);
+	//addAndMakeVisible(&wetDryMixLabel);
 
-	makeRotorySlider(&feedbackSlider, " Feedback", this);
-	feedbackValue = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(processor.pluginState, "feedback", feedbackSlider);
-	addAndMakeVisible(&feedbackSlider);
+	//makeRotorySlider(&feedbackSlider, " Feedback", this);
+	//feedbackValue = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(processor.pluginState, "feedback", feedbackSlider);
+	//addAndMakeVisible(&feedbackSlider);
 
-	feedbackLabel.setText("Feedback", dontSendNotification);
-	feedbackLabel.setJustificationType(Justification::centredTop);
-	addAndMakeVisible(&feedbackLabel);
+	//feedbackLabel.setText("Feedback", dontSendNotification);
+	//feedbackLabel.setJustificationType(Justification::centredTop);
+	//addAndMakeVisible(&feedbackLabel);
 
-	makeRotorySlider(&delaySlider, " Delay (s)", this);
-	delayValue = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(processor.pluginState, "delay", delaySlider);
-	addAndMakeVisible(&delaySlider);
+	//makeRotorySlider(&delaySlider, " Delay (s)", this);
+	//delayValue = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(processor.pluginState, "delay", delaySlider);
+	//addAndMakeVisible(&delaySlider);
 
-	delayLabel.setText("Delay (s)", dontSendNotification);
-	delayLabel.setJustificationType(Justification::centredTop);
-	addAndMakeVisible(&delayLabel);
+	//delayLabel.setText("Delay (s)", dontSendNotification);
+	//delayLabel.setJustificationType(Justification::centredTop);
+	//addAndMakeVisible(&delayLabel);
+
+	makeRotorySlider(&wetDryMixLeftSlider, "Left Wet/Dry Mix", this);
+	wetDryMixLeftValue = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(processor.pluginState, "wetdrymixleft", wetDryMixLeftSlider);
+	addAndMakeVisible(&wetDryMixLeftSlider);
+
+	wetDryMixLeftLabel.setText("Left Wet/Dry Mix", dontSendNotification);
+	wetDryMixLeftLabel.setJustificationType(Justification::centredTop);
+	addAndMakeVisible(&wetDryMixLeftLabel);
+
+	makeRotorySlider(&wetDryMixRightSlider, "Right Wet/Dry Mix", this);
+	wetDryMixRightValue = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(processor.pluginState, "wetdrymixright", wetDryMixRightSlider);
+	addAndMakeVisible(&wetDryMixRightSlider);
+
+	wetDryMixRightLabel.setText("Right Wet/Dry Mix", dontSendNotification);
+	wetDryMixRightLabel.setJustificationType(Justification::centredTop);
+	addAndMakeVisible(&wetDryMixRightLabel);
+
+	makeRotorySlider(&cutoffFreqSlider, " Cutoff (Hz)", this);
+	cutoffFreqValue = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(processor.pluginState, "cutoff", cutoffFreqSlider);
+	addAndMakeVisible(&cutoffFreqSlider);
+
+	cutoffFreqLabel.setText("Cutoff Freq.", dontSendNotification);
+	cutoffFreqLabel.setJustificationType(Justification::centredTop);
+	addAndMakeVisible(&cutoffFreqLabel);
 
 	makeRotorySlider(&chorusRateSlider, " Rate (Hz)", this);
 	chorusRateValue = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(processor.pluginState, "rate", chorusRateSlider);
@@ -69,13 +93,13 @@ DelayAudioProcessorEditor::DelayAudioProcessorEditor (DelayAudioProcessor& p)
 	depthLabel.setJustificationType(Justification::centredTop);
 	addAndMakeVisible(&depthLabel);
 
-	makeRotorySlider(&phaseOffsetSlider, " Phase Offset", this);
-	phaseOffsetValue = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(processor.pluginState, "phaseOffset", phaseOffsetSlider);
-	addAndMakeVisible(&phaseOffsetSlider);
+	//makeRotorySlider(&phaseOffsetSlider, " Phase Offset", this);
+	//phaseOffsetValue = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(processor.pluginState, "phaseOffset", phaseOffsetSlider);
+	//addAndMakeVisible(&phaseOffsetSlider);
 
-	phaseOffsetLabel.setText("Phase Offset", dontSendNotification);
-	phaseOffsetLabel.setJustificationType(Justification::centredTop);
-	addAndMakeVisible(&phaseOffsetLabel);
+	//phaseOffsetLabel.setText("Phase Offset", dontSendNotification);
+	//phaseOffsetLabel.setJustificationType(Justification::centredTop);
+	//addAndMakeVisible(&phaseOffsetLabel);
 }
 
 DelayAudioProcessorEditor::~DelayAudioProcessorEditor()
@@ -102,18 +126,28 @@ void DelayAudioProcessorEditor::resized()
 	grid.items = {
 		GridItem(pluginName)
 			.withArea(GridItem::Property(1), GridItem::Property(1), GridItem::Property(1), GridItem::Property(4)),
-		GridItem(wetDryMixSlider),
-		GridItem(feedbackSlider),
-		GridItem(delaySlider),
-		GridItem(wetDryMixLabel),
-		GridItem(feedbackLabel),
-		GridItem(delayLabel),
+		//GridItem(wetDryMixSlider),
+		//GridItem(feedbackSlider),
+		//GridItem(delaySlider),
+		//GridItem(wetDryMixLabel),
+		//GridItem(feedbackLabel),
+		//GridItem(delayLabel),
+		GridItem(wetDryMixLeftSlider),
+		GridItem(wetDryMixRightSlider),
+		GridItem(cutoffFreqSlider),
+
+		GridItem(wetDryMixLeftLabel),
+		GridItem(wetDryMixRightLabel),
+		GridItem(cutoffFreqLabel),
+
 		GridItem(chorusRateSlider),
 		GridItem(chorusDepthSlider),
-		GridItem(phaseOffsetSlider),
+		GridItem(),
+		//GridItem(phaseOffsetSlider),
+
 		GridItem(rateLabel),
 		GridItem(depthLabel),
-		GridItem(phaseOffsetLabel)
+		//GridItem(phaseOffsetLabel)
 	 };
 
 	grid.performLayout(getLocalBounds());
